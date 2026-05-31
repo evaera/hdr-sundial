@@ -3,6 +3,7 @@ name = "hdr-sundial"
 version = "0.1.0"
 edition = "2021"
 description = "HDR Sundial — set Windows SDR content brightness from the sun's position"
+license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "sundial"

@@ -77,3 +77,8 @@ the shape. Set `heading_aware = false` to track elevation alone.
 sundial add-startup      register to run at logon
 sundial remove-startup   unregister
 ```
+
+## License
+
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at
+your option.
