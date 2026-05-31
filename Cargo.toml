@@ -4,10 +4,18 @@ version = "0.1.0"
 edition = "2021"
 description = "HDR Sundial — set Windows SDR content brightness from the sun's position"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/evaera/hdr-sundial"
+readme = "README.md"
+keywords = ["hdr", "brightness", "sdr", "windows", "display"]
+categories = ["command-line-utilities", "os::windows-apis"]
 
 [[bin]]
 name = "sundial"
 path = "src/main.rs"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]
 
 [dependencies]
 anyhow = "1"
