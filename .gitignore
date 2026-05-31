@@ -1,0 +1,12 @@
+# Rust build artifacts
+/target
+
+# Cargo.lock is intentionally committed (this is a binary, not a library).
+
+# Editor / OS noise
+*.swp
+*~
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,26 @@
+latitude_deg = 0.0
+longitude_deg = 0.0
+
+night_brightness_percent = 40.0  # slider floor when dark
+day_brightness_percent = 95.0    # slider ceiling at full daylight
+
+# Calibration: how the 0..100 slider maps to SDR white level in nits.
+# Windows is ~linear: 0 ≈ 80 nits, 100 ≈ 500 nits. To match your panel, drag
+# the Settings slider to each end and read the nits from `sundial status`.
+calibration_nits_at_0 = 80.0
+calibration_nits_at_100 = 500.0
+
+elev_low_deg = -6.0    # sun elevation where the night-to-day ramp starts
+elev_high_deg = 10.0   # sun elevation where diffuse daylight is "full"
+
+# Heading-aware mode only counts direct sun when it's in front of the window.
+# Off by default (tracks sun elevation only); set true and your heading to use it.
+heading_aware = false
+heading_deg = 180.0        # 0=N, 90=E, 180=S, 270=W
+ambient_fraction = 0.55    # share of range from skylight alone, before direct sun
+direct_ramp_deg = 5.0      # sun must clear this many deg for full direct-sun term
+
+tick_seconds = 2.0             # idle poll cadence when settled (cheap, no writes)
+anim_fps = 30.0                # frame rate while gliding (higher = smoother)
+ease_fraction = 0.15           # fraction of remaining distance moved per frame
+update_threshold_percent = 0.5 # only correct the slider once it drifts this far
