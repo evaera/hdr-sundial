@@ -7,6 +7,10 @@ use winreg::enums::{HKEY_CURRENT_USER, KEY_WRITE};
 use winreg::RegKey;
 
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+// Where Task Manager records each startup entry's enabled/disabled state. It
+// outlives the Run value, so a row can linger in the Startup tab if not cleared.
+const APPROVED_KEY: &str =
+    r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 const VALUE_NAME: &str = "HDR Sundial";
 
 /// Register the currently-running exe to start at logon.
@@ -37,6 +41,12 @@ pub fn remove() -> Result<()> {
             println!("No startup entry '{VALUE_NAME}' found; nothing to remove.");
         }
         Err(e) => return Err(anyhow::Error::new(e).context("deleting startup value")),
+    }
+
+    // Also clear Task Manager's saved enable/disable state, if any — otherwise
+    // the row keeps showing in the Startup tab. Best effort: absent is fine.
+    if let Ok(approved) = hkcu.open_subkey_with_flags(APPROVED_KEY, KEY_WRITE) {
+        let _ = approved.delete_value(VALUE_NAME);
     }
     Ok(())
 }

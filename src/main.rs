@@ -362,7 +362,7 @@ enum Command {
         value: f64,
     },
     /// Register to run at logon (shows in Task Manager's Startup apps).
-    AddStartup,
+    Startup,
     /// Remove the logon entry.
     RemoveStartup,
 }
@@ -377,7 +377,7 @@ fn main() -> Result<()> {
 
     // Startup registration doesn't need (and shouldn't create) a config.
     match cli.command {
-        Some(Command::AddStartup) => return startup::add(),
+        Some(Command::Startup) => return startup::add(),
         Some(Command::RemoveStartup) => return startup::remove(),
         _ => {}
     }
@@ -396,7 +396,7 @@ fn main() -> Result<()> {
         Some(Command::Curve) => run_curve(&cfg),
         Some(Command::Once) => run_once(&cfg),
         Some(Command::Set { value }) => run_set(&cfg, value),
-        Some(Command::AddStartup | Command::RemoveStartup) => unreachable!("handled above"),
+        Some(Command::Startup | Command::RemoveStartup) => unreachable!("handled above"),
         None => run_loop(&cfg),
     }
 }

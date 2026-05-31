@@ -15,7 +15,7 @@ sundial once             apply the target once and exit
 sundial status           print sun position and each display's current level
 sundial curve            print the next 24h of target brightness
 sundial set N            set every HDR display to slider value N (0..100)
-sundial add-startup      register to run at logon (see below)
+sundial startup          register to run at logon (see below)
 sundial remove-startup   unregister
 sundial --help           full help; each subcommand also has --help
 ```
@@ -74,7 +74,7 @@ the shape. Set `heading_aware = false` to track elevation alone.
 ## Run at login
 
 ```
-sundial add-startup      register to run at logon
+sundial startup          register to run at logon
 sundial remove-startup   unregister
 ```
 
