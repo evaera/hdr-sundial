@@ -7,6 +7,28 @@ when the sun is brightest, without the need for an ambient light sensor.
 It computes the sun's position offline based on time, position, and heading, and smoothly nudges each
 HDR display towards the computed goal.
 
+## Installation
+
+**With cargo**:
+
+```
+cargo install hdr-sundial
+```
+
+This puts the `sundial` binary on your PATH.
+
+**Prebuilt binaries:** download the Windows x64 or ARM64 zip from the
+[Releases](https://github.com/evaera/hdr-sundial/releases) page and extract
+`sundial.exe` anywhere.
+
+**From source:**
+
+```
+git clone https://github.com/evaera/hdr-sundial
+cd hdr-sundial
+cargo build --release   # -> target/release/sundial.exe
+```
+
 ## Usage
 
 ```
