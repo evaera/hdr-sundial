@@ -4,8 +4,8 @@ Drives the Windows **SDR content brightness** slider (the one under
 *Settings → Display → HDR*) from the sun's position, making your monitor brighter
 when the sun is brightest, without the need for an ambient light sensor.
 
-It computes the sun's position offline based on time, position, and heading, and smoothly nudges each
-HDR display towards the computed goal.
+It computes the sun's position offline based on time, location, and heading, and continuously sets your
+HDR display to the correct brightness.
 
 ## Installation
 
@@ -69,9 +69,7 @@ heading_deg = 270.0              # 0=N, 90=E, 180=S, 270=W (this one faces due w
 ambient_fraction = 0.55          # share of the range from skylight alone
 direct_ramp_deg = 5.0            # sun must clear this many degrees for full direct sun
 
-tick_seconds = 2.0               # poll interval when settled
-anim_fps = 30.0                  # frame rate while gliding
-ease_fraction = 0.15             # fraction of the remaining gap closed per frame
+tick_seconds = 2.0               # how often to check the target and slider value
 update_threshold_percent = 0.5   # leave the slider alone until it drifts this far
 ```
 

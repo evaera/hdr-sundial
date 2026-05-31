@@ -45,12 +45,8 @@ struct Config {
     /// Sun must clear this many degrees for full direct-sun contribution.
     direct_ramp_deg: f64,
 
-    /// Poll interval (s) while settled — no writes happen then.
+    /// How often (s) to check the target and the slider's actual value.
     tick_seconds: f64,
-    /// Frame rate while gliding. Lower if you ever see flicker.
-    anim_fps: f64,
-    /// Per frame, the fraction of remaining distance to close (0..1).
-    ease_fraction: f64,
     /// Leave the slider alone until it's off-target by this many slider %.
     /// Stops needless writes while still correcting drift / manual edits.
     update_threshold_percent: f64,
@@ -73,8 +69,6 @@ impl Default for Config {
             ambient_fraction: 0.55,
             direct_ramp_deg: 5.0,
             tick_seconds: 2.0,
-            anim_fps: 30.0,
-            ease_fraction: 0.15,
             update_threshold_percent: 0.5,
         }
     }
@@ -246,12 +240,10 @@ fn run_set(cfg: &Config, brightness: f64) -> Result<()> {
     Ok(())
 }
 
-/// Main loop: read each display and glide it toward the sun-derived target
-/// whenever it has drifted past the deadband.
+/// Main loop: each tick, read each display and snap it straight to the
+/// sun-derived target whenever it has drifted past the deadband.
 fn run_loop(cfg: &Config) -> Result<()> {
-    let idle = Duration::from_secs_f64(cfg.tick_seconds.max(0.05));
-    let frame = Duration::from_secs_f64((1.0 / cfg.anim_fps.max(1.0)).max(0.001));
-    let ease = cfg.ease_fraction.clamp(0.01, 1.0);
+    let tick = Duration::from_secs_f64(cfg.tick_seconds.max(0.05));
     let threshold = cfg.update_threshold_percent.max(0.0);
 
     let mut targets = display::enumerate_hdr_targets()?;
@@ -260,12 +252,21 @@ fn run_loop(cfg: &Config) -> Result<()> {
         targets.len()
     );
 
-    let mut idle_ticks = 0u32;
+    let mut ticks = 0u32;
     loop {
-        let goal = target_brightness(cfg, current_position(cfg));
+        // Re-enumerate occasionally so plugging in / toggling HDR is picked up.
+        ticks += 1;
+        if ticks >= 30 {
+            ticks = 0;
+            if let Ok(fresh) = display::enumerate_hdr_targets() {
+                if fresh.len() != targets.len() {
+                    targets = fresh;
+                }
+            }
+        }
 
-        // Step each display toward the goal; note if any is still moving.
-        let mut moving = false;
+        let goal = target_brightness(cfg, current_position(cfg));
+        let goal_nits = cfg.brightness_to_nits(goal);
         for (i, t) in targets.iter().enumerate() {
             // Reading the live value also catches manual slider edits.
             let actual = match t.get_white_level_nits() {
@@ -275,32 +276,14 @@ fn run_loop(cfg: &Config) -> Result<()> {
                     continue;
                 }
             };
-            let remaining = goal - actual;
-            if remaining.abs() < threshold {
-                continue; // close enough — leave it alone
-            }
-            moving = true;
-            let next = actual + ease * remaining; // ease from where it actually is
-            if let Err(e) = t.set_white_level_nits(cfg.brightness_to_nits(next)) {
-                eprintln!("set failed on display {i}: {e}");
-            }
-        }
-
-        if moving {
-            sleep(frame); // mid-glide: fast frames for a smooth change
-        } else {
-            // settled: idle cheaply, re-scanning now and then for HDR changes
-            idle_ticks += 1;
-            if idle_ticks >= 30 {
-                idle_ticks = 0;
-                if let Ok(fresh) = display::enumerate_hdr_targets() {
-                    if fresh.len() != targets.len() {
-                        targets = fresh;
-                    }
+            // Snap straight to the goal once it's off by more than the deadband.
+            if (goal - actual).abs() >= threshold {
+                if let Err(e) = t.set_white_level_nits(goal_nits) {
+                    eprintln!("set failed on display {i}: {e}");
                 }
             }
-            sleep(idle);
         }
+        sleep(tick);
     }
 }
 

@@ -20,7 +20,5 @@ heading_deg = 180.0        # 0=N, 90=E, 180=S, 270=W
 ambient_fraction = 0.55    # share of range from skylight alone, before direct sun
 direct_ramp_deg = 5.0      # sun must clear this many deg for full direct-sun term
 
-tick_seconds = 2.0             # idle poll cadence when settled (cheap, no writes)
-anim_fps = 30.0                # frame rate while gliding (higher = smoother)
-ease_fraction = 0.15           # fraction of remaining distance moved per frame
+tick_seconds = 2.0             # how often to check the target and slider value
 update_threshold_percent = 0.5 # only correct the slider once it drifts this far
