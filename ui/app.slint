@@ -13,7 +13,7 @@ import "../assets/fonts/HankenGrotesk-Bold.ttf";
 
 import { Theme } from "theme.slint";
 import { Backend } from "backend.slint";
-import { SectionLabel, AmberButton, QuitButton, GhostButton, Checkbox, Toggle, MiniSlider, NumField } from "widgets.slint";
+import { SectionLabel, AmberButton, QuitButton, GhostButton, LocationLink, Checkbox, Toggle, MiniSlider, NumField } from "widgets.slint";
 import { SunDial } from "sun_dial.slint";
 import { Globe } from "globe.slint";
 import { ElevationArc } from "elevation_arc.slint";
@@ -97,6 +97,13 @@ export component AppWindow inherits Window {
                             edited(t) => { Backend.lat_edited(t); } }
                         NumField { suffix: "°E"; text <=> Backend.lon_text;
                             edited(t) => { Backend.lon_edited(t); } }
+                        // Quiet "Use my location" link, left-aligned under the inputs.
+                        HorizontalLayout {
+                            alignment: start;
+                            padding-top: 2px;
+                            LocationLink { state: Backend.loc_state;
+                                clicked => { Backend.use_location(); } }
+                        }
                     }
                 }
             }

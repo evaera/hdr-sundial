@@ -78,6 +78,67 @@ export component GhostButton inherits Rectangle {
         mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
+// Quiet text-link that fills lat/lon from the OS location service. A single
+// `state` ("idle" | "locating" | "error") drives all three looks. Reads as a
+// secondary utility action, not a third input field: transparent, borderless,
+// amber underlined mono label, left-aligned hugging its content.
+export component LocationLink inherits Rectangle {
+    in property <string> state: "idle"; // idle | locating | error
+    callback clicked();
+    property <bool> is_busy: root.state == "locating";
+    property <bool> is_error: root.state == "error";
+    property <color> tint: root.is_error ? #e8896f : Theme.amber;
+    // Spinner: advance the arc's start angle off the global animation clock
+    // (360°/s). Only read while busy, so it idles when the ring isn't shown.
+    property <angle> spin: (animation-tick() / 1ms) * 0.36deg;
+
+    horizontal-stretch: 0;
+    width: row.preferred-width;
+    height: row.preferred-height;
+    background: transparent;
+
+    row := HorizontalLayout {
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 13px; height: 13px;
+                // idle / error: a "current location" crosshair (center circle + N/E/S/W ticks)
+                if !root.is_busy : Path {
+                    width: 100%; height: 100%;
+                    viewbox-width: 16; viewbox-height: 16;
+                    commands: "M 4.8 8 A 3.2 3.2 0 1 1 11.2 8 A 3.2 3.2 0 1 1 4.8 8 M 8 1 L 8 3.5 M 8 12.5 L 8 15 M 1 8 L 3.5 8 M 12.5 8 L 15 8";
+                    stroke: root.tint; stroke-width: 1.5px; fill: transparent;
+                }
+                // locating: a ~270° ring whose endpoints rotate each frame
+                // (Path has no rotation-angle, so the geometry itself spins).
+                if root.is_busy : Path {
+                    width: 100%; height: 100%;
+                    viewbox-width: 16; viewbox-height: 16;
+                    commands: "M \{8 + 5 * Math.cos(root.spin)} \{8 + 5 * Math.sin(root.spin)} A 5 5 0 1 1 \{8 + 5 * Math.cos(root.spin + 270deg)} \{8 + 5 * Math.sin(root.spin + 270deg)}";
+                    stroke: root.tint; stroke-width: 1.5px; fill: transparent;
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            Text {
+                text: root.is_busy ? "Locating\u{2026}"
+                    : (root.is_error ? "Location unavailable \u{2014} retry" : "Use my location");
+                color: root.tint;
+                font-family: Theme.mono; font-size: 11px; font-weight: 600;
+            }
+            Rectangle { height: 1px; background: root.tint; } // border-bottom underline
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: root.is_busy ? default : pointer;
+        enabled: !root.is_busy;
+        clicked => { root.clicked(); }
+    }
+}
+
 export component Checkbox inherits HorizontalLayout {
     in property <string> text;
     in-out property <bool> checked;

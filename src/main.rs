@@ -4,9 +4,11 @@
 
 mod display;
 mod gui;
+mod location;
 mod solar;
 mod startup;
 mod sundial_math;
+mod world_map;
 
 use std::path::PathBuf;
 

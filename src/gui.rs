@@ -57,6 +57,9 @@ struct AppState {
     wake: Sender<()>,
     scrub: Option<f64>,    // solar hour 0..24 when scrubbing; None = live
     season: Option<u16>,   // overridden day-of-year (0..364); None = today
+    // Pending Windows-location lookup; the worker thread sends its result here
+    // and the tick timer drains it on the UI thread.
+    loc_rx: Option<mpsc::Receiver<Result<(f64, f64), String>>>,
 }
 
 fn model_of(cfg: &Config) -> Model {
@@ -130,6 +133,7 @@ fn recompute(ui: &AppWindow, st: &AppState) {
     b.set_hl18(c.hl18.into());
     b.set_hl24(c.hl24.into());
 
+    b.set_globe_land(c.globe_land.into());
     b.set_globe_grid(c.globe_grid.into());
     b.set_globe_grid_hi(c.globe_grid_hi.into());
 
@@ -212,6 +216,29 @@ fn apply_coord_text(st: &mut AppState, text: &str, is_lat: bool) -> bool {
     false
 }
 
+/// Apply a finished Windows-location lookup. On success: round both coords to
+/// 2 decimals, write them into config + both boxes, return to "idle". On
+/// failure: switch the link to "error" (its label becomes a retry prompt).
+fn apply_location(ui: &AppWindow, st: &mut AppState, res: Result<(f64, f64), String>) {
+    let bk = ui.global::<Backend>();
+    match res {
+        Ok((lat, lon)) => {
+            let lat = (lat * 100.0).round() / 100.0;
+            let lon = (lon * 100.0).round() / 100.0;
+            st.cfg.latitude_deg = lat;
+            st.cfg.longitude_deg = lon;
+            bk.set_lat(lat as f32);
+            bk.set_lon(lon as f32);
+            bk.set_lat_text(coord_str(lat).into());
+            bk.set_lon_text(coord_str(lon).into());
+            bk.set_loc_state("idle".into());
+            persist(st);
+            recompute(ui, st);
+        }
+        Err(_) => bk.set_loc_state("error".into()),
+    }
+}
+
 pub fn run(cfg: Config, minimized: bool) -> Result<()> {
     match singleton::acquire() {
         singleton::Acquire::AlreadyRunning => {
@@ -272,6 +299,7 @@ pub fn run(cfg: Config, minimized: bool) -> Result<()> {
         wake: wake_tx,
         scrub: None,
         season: None,
+        loc_rx: None,
     }));
     let tray: Rc<RefCell<Option<tray_icon::TrayIcon>>> = Rc::new(RefCell::new(None));
 
@@ -447,6 +475,27 @@ pub fn run(cfg: Config, minimized: bool) -> Result<()> {
     {
         let weak = ui.as_weak();
         let state = Rc::clone(&state);
+        ui.global::<Backend>().on_use_location(move || {
+            let ui = weak.unwrap();
+            let bk = ui.global::<Backend>();
+            let mut st = state.borrow_mut();
+            if st.loc_rx.is_some() {
+                return; // a lookup is already in flight (clicks ignored)
+            }
+            let (tx, rx) = mpsc::channel::<Result<(f64, f64), String>>();
+            st.loc_rx = Some(rx);
+            bk.set_loc_state("locating".into());
+            // WinRT's GetGeoposition blocks for a fix, so do it off the UI
+            // thread; the tick timer applies the result.
+            std::thread::spawn(move || {
+                let res = crate::location::current_latlon().map_err(|e| e.to_string());
+                let _ = tx.send(res);
+            });
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let state = Rc::clone(&state);
         ui.global::<Backend>().on_apply(move || {
             let ui = weak.unwrap();
             let mut st = state.borrow_mut();
@@ -545,6 +594,23 @@ pub fn run(cfg: Config, minimized: bool) -> Result<()> {
                     if !styled.get() && window_hwnd(&ui).is_some() {
                         round_window_corners(&ui);
                         styled.set(true);
+                    }
+                    // Apply a Windows-location result if the worker finished.
+                    {
+                        let mut st = state.borrow_mut();
+                        if st.loc_rx.is_some() {
+                            match st.loc_rx.as_ref().unwrap().try_recv() {
+                                Ok(res) => {
+                                    st.loc_rx = None;
+                                    apply_location(&ui, &mut st, res);
+                                }
+                                Err(mpsc::TryRecvError::Empty) => {}
+                                Err(mpsc::TryRecvError::Disconnected) => {
+                                    st.loc_rx = None;
+                                    ui.global::<Backend>().set_loc_state("error".into());
+                                }
+                            }
+                        }
                     }
                     if state.borrow().scrub.is_none() {
                         recompute(&ui, &state.borrow());

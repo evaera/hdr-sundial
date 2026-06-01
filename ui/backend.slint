@@ -16,6 +16,9 @@ export global Backend {
     in-out property <bool> show_tray_icon: true;
     in property <string> version: "0.0.0";
 
+    // Windows location lookup: "idle" | "locating" | "error"
+    in property <string> loc_state: "idle";
+
     // live / derived (Rust writes)
     in property <bool> is_live: true;
     in property <float> cur_nits: 480;
@@ -62,6 +65,7 @@ export global Backend {
     in property <string> hl24;
 
     // globe geometry
+    in property <string> globe_land;
     in property <string> globe_grid;
     in property <string> globe_grid_hi;
 
@@ -108,6 +112,7 @@ export global Backend {
     callback changed();             // a bound value changed; recompute
     callback lat_edited(string);    // may contain "lat, lon"
     callback lon_edited(string);
+    callback use_location();        // fetch coords from the Windows location API
     callback apply();
     callback quit();
 

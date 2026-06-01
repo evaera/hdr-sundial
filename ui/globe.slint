@@ -9,7 +9,8 @@ export component Globe inherits Rectangle {
         background: @radial-gradient(circle, rgba(60,90,130,0.5) 0%, rgba(20,32,58,0.55) 60%, rgba(8,12,24,0.65) 100%);
         border-width: 1px; border-color: rgba(255,255,255,0.18);
     }
-    PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid; stroke: rgba(255,255,255,0.12); sw: 1px; }
+    PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_land; stroke: rgba(126,186,148,0.7); sw: 1.1px; }
+    PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid; stroke: rgba(255,255,255,0.1); sw: 1px; }
     PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid_hi; stroke: rgba(255,200,120,0.4); sw: 1.1px; }
     Rectangle { // center pin
         width: 18px; height: 18px; border-radius: 9px; x: 66px - 9px; y: 66px - 9px;

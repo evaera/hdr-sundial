@@ -267,6 +267,7 @@ pub struct Computed {
     pub hl24: String,
 
     // globe (size 132)
+    pub globe_land: String,
     pub globe_grid: String,
     pub globe_grid_hi: String,
 }
@@ -512,6 +513,43 @@ pub fn compute(m: &Model, cur_t: f64) -> Computed {
     }
     c.globe_grid = grid;
     c.globe_grid_hi = grid_hi;
+
+    // Continents: project each coarse coastline polyline with the same
+    // orthographic transform, lifting the pen on the back hemisphere so only
+    // the near side is drawn (a wireframe-globe look over the graticule).
+    fn pen(p: Option<(f64, f64)>, d: &mut String, down: &mut bool) {
+        match p {
+            Some((x, y)) => {
+                d.push_str(&format!("{} {x:.1} {y:.1} ", if *down { "L" } else { "M" }));
+                *down = true;
+            }
+            None => *down = false,
+        }
+    }
+    let mut land = String::new();
+    for poly in crate::world_map::LAND {
+        let mut down = false;
+        for w in poly.windows(2) {
+            let (lo1, la1) = (w[0].0 as f64, w[0].1 as f64);
+            let (lo2, la2) = (w[1].0 as f64, w[1].1 as f64);
+            // Drop the artificial antimeridian seam (both ends pinned to ±180).
+            if lo1.abs() > 179.5 && lo2.abs() > 179.5 {
+                down = false;
+                continue;
+            }
+            // Subdivide so long chords clip cleanly at the limb.
+            let span = (la2 - la1).abs().max((lo2 - lo1).abs() * (la1 * D2R).cos().abs());
+            let steps = ((span / 2.0).ceil() as i32).clamp(1, 16);
+            let start = if down { 1 } else { 0 }; // shared vertex already emitted
+            for sd in start..=steps {
+                let t = sd as f64 / steps as f64;
+                let la = (la1 + (la2 - la1) * t) * D2R;
+                let lo = (lo1 + (lo2 - lo1) * t) * D2R;
+                pen(project(la, lo), &mut land, &mut down);
+            }
+        }
+    }
+    c.globe_land = land;
 
     c
 }
