@@ -13,10 +13,11 @@ const APPROVED_KEY: &str =
     r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 const VALUE_NAME: &str = "HDR Sundial";
 
-/// Register the currently-running exe to start at logon.
+/// Register the currently-running exe to start at logon. `--minimized` so the
+/// logon launch goes straight to the background (no settings window).
 pub fn add() -> Result<()> {
     let exe = std::env::current_exe().context("locating current exe")?;
-    let command = format!("\"{}\"", exe.display()); // quoted in case of spaces
+    let command = format!("\"{}\" --minimized", exe.display()); // quoted for spaces
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let (run, _) = hkcu.create_subkey(RUN_KEY).context("opening HKCU Run key")?;
@@ -26,6 +27,14 @@ pub fn add() -> Result<()> {
     println!("Added startup entry '{VALUE_NAME}' -> {command}");
     println!("Shows in Task Manager > Startup apps; runs at next logon.");
     Ok(())
+}
+
+/// Whether the logon entry currently exists.
+pub fn is_registered() -> bool {
+    RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(RUN_KEY)
+        .and_then(|run| run.get_value::<String, _>(VALUE_NAME))
+        .is_ok()
 }
 
 /// Remove the startup entry, if present.

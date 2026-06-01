@@ -1,0 +1,222 @@
+import { LineEdit, CheckBox, Slider, ScrollView, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+// One labelled text field. Two-way bound to a string property; reports edits.
+component Field {
+    in property <string> label;
+    in-out property <string> value;
+    callback edited(string);
+    HorizontalBox {
+        padding: 0px;
+        spacing: 8px;
+        Text {
+            text: root.label;
+            width: 210px;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+        LineEdit {
+            text <=> root.value;
+            edited(t) => {
+                root.edited(t);
+            }
+        }
+    }
+}
+
+// A labelled slider with a numeric readout. Reports the (rounded) value.
+component SliderField {
+    in property <string> label;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 1;
+    in property <int> decimals: 0;
+    in-out property <float> value;
+    callback edited(float);
+    HorizontalBox {
+        padding: 0px;
+        spacing: 8px;
+        Text {
+            text: root.label;
+            width: 210px;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+        Slider {
+            minimum: root.minimum;
+            maximum: root.maximum;
+            step: root.step;
+            value <=> root.value;
+            changed(v) => {
+                root.edited(v);
+            }
+        }
+        Text {
+            text: root.decimals == 0 ? "\{root.value.round()}" : "\{(root.value * 100).round() / 100}";
+            width: 38px;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+component DangerButton {
+    in property <string> text;
+    callback clicked();
+    min-height: 34px;
+    Rectangle {
+        background: ta.pressed ? #8e1414 : (ta.has-hover ? #d83232 : #c62828);
+        border-radius: 6px;
+        Text {
+            text: root.text;
+            color: white;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        ta := TouchArea {
+            clicked => {
+                root.clicked();
+            }
+        }
+    }
+}
+
+export component SettingsWindow inherits Window {
+    title: "HDR Sundial";
+    icon: @image-url("../assets/sundial.png");
+    preferred-width: 460px;
+    preferred-height: 700px;
+
+    // String mirrors of free-form numeric values (Rust parses them).
+    in-out property <string> latitude_deg;
+    in-out property <string> longitude_deg;
+    in-out property <string> elev_low_deg;
+    in-out property <string> elev_high_deg;
+    in-out property <string> heading_deg;
+    in-out property <string> direct_ramp_deg;
+    // Slider-backed numeric values.
+    in-out property <float> night_brightness;
+    in-out property <float> day_brightness;
+    in-out property <float> ambient_fraction;
+    in-out property <float> tick_seconds;
+    in-out property <bool> heading_aware;
+    in-out property <bool> show_tray_icon;
+    in-out property <bool> run_at_startup;
+
+    callback value_edited(string, string);
+    callback flag_toggled(string, bool);
+    callback quit();
+
+    VerticalBox {
+        padding: 14px;
+        spacing: 8px;
+
+        HorizontalBox {
+            alignment: center;
+            Image {
+                source: @image-url("../assets/sundial.png");
+                width: 150px;
+                height: 150px;
+                image-fit: contain;
+            }
+        }
+        Text {
+            text: "HDR Sundial";
+            font-size: 22px;
+            font-weight: 800;
+            horizontal-alignment: center;
+        }
+
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalBox {
+                padding: 0px;
+                spacing: 8px;
+
+                Text { text: "Location"; font-weight: 700; }
+                Field {
+                    label: "Latitude (°)";
+                    value <=> root.latitude_deg;
+                    edited(t) => { root.value_edited("latitude_deg", t); }
+                }
+                Field {
+                    label: "Longitude (°)";
+                    value <=> root.longitude_deg;
+                    edited(t) => { root.value_edited("longitude_deg", t); }
+                }
+
+                Text { text: "Brightness"; font-weight: 700; }
+                SliderField {
+                    label: "Night brightness";
+                    value <=> root.night_brightness;
+                    edited(v) => { root.value_edited("night_brightness_percent", "\{v.round()}"); }
+                }
+                SliderField {
+                    label: "Day brightness";
+                    value <=> root.day_brightness;
+                    edited(v) => { root.value_edited("day_brightness_percent", "\{v.round()}"); }
+                }
+
+                Text { text: "Sun model"; font-weight: 700; }
+                Field {
+                    label: "Ramp start elevation (°)";
+                    value <=> root.elev_low_deg;
+                    edited(t) => { root.value_edited("elev_low_deg", t); }
+                }
+                Field {
+                    label: "Full-daylight elevation (°)";
+                    value <=> root.elev_high_deg;
+                    edited(t) => { root.value_edited("elev_high_deg", t); }
+                }
+                CheckBox {
+                    text: "Heading-aware (use window direction)";
+                    checked <=> root.heading_aware;
+                    toggled => { root.flag_toggled("heading_aware", self.checked); }
+                }
+                Field {
+                    label: "Window heading (0=N 90=E 180=S 270=W)";
+                    value <=> root.heading_deg;
+                    edited(t) => { root.value_edited("heading_deg", t); }
+                }
+                SliderField {
+                    label: "Ambient fraction";
+                    minimum: 0;
+                    maximum: 1;
+                    step: 0.05;
+                    decimals: 2;
+                    value <=> root.ambient_fraction;
+                    edited(v) => { root.value_edited("ambient_fraction", "\{(v * 100).round() / 100}"); }
+                }
+                Field {
+                    label: "Direct-sun ramp (°)";
+                    value <=> root.direct_ramp_deg;
+                    edited(t) => { root.value_edited("direct_ramp_deg", t); }
+                }
+
+                Text { text: "Behavior"; font-weight: 700; }
+                SliderField {
+                    label: "Check interval (s)";
+                    minimum: 1;
+                    maximum: 30;
+                    step: 1;
+                    value <=> root.tick_seconds;
+                    edited(v) => { root.value_edited("tick_seconds", "\{v.round()}"); }
+                }
+                CheckBox {
+                    text: "Run at startup";
+                    checked <=> root.run_at_startup;
+                    toggled => { root.flag_toggled("run_at_startup", self.checked); }
+                }
+                CheckBox {
+                    text: "Show tray icon";
+                    checked <=> root.show_tray_icon;
+                    toggled => { root.flag_toggled("show_tray_icon", self.checked); }
+                }
+            }
+        }
+
+        DangerButton {
+            text: "Quit HDR Sundial";
+            clicked => { root.quit(); }
+        }
+    }
+}

@@ -3,12 +3,12 @@
 //! HDR Sundial - drive the Windows SDR content brightness slider from the sun.
 
 mod display;
+mod gui;
 mod solar;
 mod startup;
+mod sundial_math;
 
 use std::path::PathBuf;
-use std::thread::sleep;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -40,7 +40,8 @@ struct Config {
     /// (0=N, 90=E, 180=S, 270=W).
     heading_deg: f64,
     /// Share of the range from skylight alone; direct sun through the window
-    /// fills the rest. 0..1.
+    /// fills the rest. 0..1. The CONTRIBUTION slider drives this as
+    /// `1 - direct_contribution`.
     ambient_fraction: f64,
     /// Sun must clear this many degrees for full direct-sun contribution.
     direct_ramp_deg: f64,
@@ -50,6 +51,9 @@ struct Config {
     /// Leave the slider alone until it's off-target by this many slider %.
     /// Stops needless writes while still correcting drift / manual edits.
     update_threshold_percent: f64,
+
+    /// Show a system tray icon (left-click opens settings; right-click menu).
+    show_tray_icon: bool,
 }
 
 impl Default for Config {
@@ -61,7 +65,7 @@ impl Default for Config {
             night_brightness_percent: 40.0,
             day_brightness_percent: 95.0,
             calibration_nits_at_0: 80.0,
-            calibration_nits_at_100: 500.0,
+            calibration_nits_at_100: 0.0, // 0 = auto-detect the panel's max on first run
             elev_low_deg: -6.0,
             elev_high_deg: 10.0,
             heading_aware: false,
@@ -70,6 +74,7 @@ impl Default for Config {
             direct_ramp_deg: 5.0,
             tick_seconds: 2.0,
             update_threshold_percent: 0.5,
+            show_tray_icon: true,
         }
     }
 }
@@ -98,9 +103,9 @@ fn smoothstep(x: f64, edge0: f64, edge1: f64) -> f64 {
 /// Daylight factor, 0..1. Heading-aware mode blends diffuse skylight with a
 /// direct-beam term that only kicks in when the sun faces the window.
 fn daylight01(cfg: &Config, pos: solar::SunPosition) -> f64 {
-    let diffuse = smoothstep(pos.elevation, cfg.elev_low_deg, cfg.elev_high_deg);
+    let location_only = smoothstep(pos.elevation, cfg.elev_low_deg, cfg.elev_high_deg);
     if !cfg.heading_aware {
-        return diffuse;
+        return location_only;
     }
     // Irradiance on a vertical surface ∝ cos(elevation)·cos(Δazimuth), clamped
     // to the half-plane the window faces, and gated to above-horizon sun.
@@ -109,7 +114,9 @@ fn daylight01(cfg: &Config, pos: solar::SunPosition) -> f64 {
     let direct =
         (elev_rad.cos() * d_az).max(0.0) * smoothstep(pos.elevation, 0.0, cfg.direct_ramp_deg);
 
-    (diffuse * cfg.ambient_fraction + direct * (1.0 - cfg.ambient_fraction)).clamp(0.0, 1.0)
+    // ambient_fraction is the single ambient↔direct mix (driven by the
+    // CONTRIBUTION slider). 1.0 = location only, 0.0 = fully directional.
+    (location_only * cfg.ambient_fraction + direct * (1.0 - cfg.ambient_fraction)).clamp(0.0, 1.0)
 }
 
 /// Target brightness on the slider scale (0..100) for a given sun position.
@@ -240,53 +247,6 @@ fn run_set(cfg: &Config, brightness: f64) -> Result<()> {
     Ok(())
 }
 
-/// Main loop: each tick, read each display and snap it straight to the
-/// sun-derived target whenever it has drifted past the deadband.
-fn run_loop(cfg: &Config) -> Result<()> {
-    let tick = Duration::from_secs_f64(cfg.tick_seconds.max(0.05));
-    let threshold = cfg.update_threshold_percent.max(0.0);
-
-    let mut targets = display::enumerate_hdr_targets()?;
-    println!(
-        "HDR Sundial running for {} HDR display(s). Ctrl+C to stop.",
-        targets.len()
-    );
-
-    let mut ticks = 0u32;
-    loop {
-        // Re-enumerate occasionally so plugging in / toggling HDR is picked up.
-        ticks += 1;
-        if ticks >= 30 {
-            ticks = 0;
-            if let Ok(fresh) = display::enumerate_hdr_targets() {
-                if fresh.len() != targets.len() {
-                    targets = fresh;
-                }
-            }
-        }
-
-        let goal = target_brightness(cfg, current_position(cfg));
-        let goal_nits = cfg.brightness_to_nits(goal);
-        for (i, t) in targets.iter().enumerate() {
-            // Reading the live value also catches manual slider edits.
-            let actual = match t.get_white_level_nits() {
-                Ok(nits) => cfg.nits_to_brightness(nits),
-                Err(e) => {
-                    eprintln!("read failed on display {i}: {e}");
-                    continue;
-                }
-            };
-            // Snap straight to the goal once it's off by more than the deadband.
-            if (goal - actual).abs() >= threshold {
-                if let Err(e) = t.set_white_level_nits(goal_nits) {
-                    eprintln!("set failed on display {i}: {e}");
-                }
-            }
-        }
-        sleep(tick);
-    }
-}
-
 /// Find somewhere to print without forcing a console at logon: redirected
 /// stdout is left alone, a launching terminal gets attached to, and a fresh
 /// console window is allocated only if `--console` was passed.
@@ -326,6 +286,10 @@ struct Cli {
     /// Force a console window (e.g. to watch the loop when launched windowless).
     #[arg(long, global = true)]
     console: bool,
+
+    /// Start hidden in the background (used by the logon entry).
+    #[arg(long)]
+    minimized: bool,
 
     #[command(subcommand)]
     command: Option<Command>,
@@ -380,6 +344,6 @@ fn main() -> Result<()> {
         Some(Command::Once) => run_once(&cfg),
         Some(Command::Set { value }) => run_set(&cfg, value),
         Some(Command::Startup | Command::RemoveStartup) => unreachable!("handled above"),
-        None => run_loop(&cfg),
+        None => gui::run(cfg, cli.minimized),
     }
 }

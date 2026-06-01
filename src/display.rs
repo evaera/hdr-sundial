@@ -87,6 +87,42 @@ impl HdrTarget {
         }
         Ok(())
     }
+
+    /// Binary-search the highest SDR white level (nits) the system accepts for
+    /// this display — used to auto-calibrate the top of the slider range.
+    /// Out-of-range sets are rejected as no-ops, so probing never blinds the
+    /// screen; the previous level is restored before returning.
+    pub fn probe_max_nits(&self) -> f64 {
+        let saved = self.get_white_level_nits().ok();
+        let mut low = 80.0_f64; // Windows SDR-white floor — always valid
+        let mut high = 2000.0_f64;
+        // Expand until `high` is rejected, so it's a true upper bound.
+        while self.set_white_level_nits(high).is_ok() {
+            low = high;
+            high *= 2.0;
+            if high > 100_000.0 {
+                break;
+            }
+        }
+        while high - low > 1.0 {
+            let mid = (low + high) / 2.0;
+            if self.set_white_level_nits(mid).is_ok() {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        // Walk up to the exact highest accepted integer (the search only gets
+        // within 1 nit; this pins it to the true boundary).
+        let mut max = low.floor();
+        while self.set_white_level_nits(max + 1.0).is_ok() {
+            max += 1.0;
+        }
+        if let Some(s) = saved {
+            let _ = self.set_white_level_nits(s);
+        }
+        max
+    }
 }
 
 /// Whether advanced color (HDR) is currently enabled on a target.

@@ -1,0 +1,217 @@
+// Bundled fonts (embedded at compile time, registered process-wide).
+import "../assets/fonts/JetBrainsMono-Regular.ttf";
+import "../assets/fonts/JetBrainsMono-Medium.ttf";
+import "../assets/fonts/JetBrainsMono-SemiBold.ttf";
+import "../assets/fonts/JetBrainsMono-Bold.ttf";
+import "../assets/fonts/SpaceGrotesk-Medium.ttf";
+import "../assets/fonts/SpaceGrotesk-SemiBold.ttf";
+import "../assets/fonts/SpaceGrotesk-Bold.ttf";
+import "../assets/fonts/HankenGrotesk-Regular.ttf";
+import "../assets/fonts/HankenGrotesk-Medium.ttf";
+import "../assets/fonts/HankenGrotesk-SemiBold.ttf";
+import "../assets/fonts/HankenGrotesk-Bold.ttf";
+
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { SectionLabel, AmberButton, QuitButton, GhostButton, Checkbox, Toggle, MiniSlider, NumField } from "widgets.slint";
+import { SunDial } from "sun_dial.slint";
+import { Globe } from "globe.slint";
+import { ElevationArc } from "elevation_arc.slint";
+import { Compass } from "compass.slint";
+import { BrightnessCurve } from "brightness_curve.slint";
+import { AboutDialog } from "about_dialog.slint";
+import { TitleBar } from "title_bar.slint";
+import { SeasonRow } from "season_slider.slint";
+
+// Re-export so the Rust side can reach the global via ui.global::<Backend>().
+export { Backend }
+
+export component AppWindow inherits Window {
+    title: "HDR Sundial";
+    icon: @image-url("../assets/png/sundial-256.png");
+    background: Theme.bg;
+    default-font-family: Theme.sans;
+    no-frame: true;
+    preferred-width: 924px;
+    preferred-height: 766px;
+    min-width: 880px;
+    min-height: 722px;
+
+    property <bool> show_about: false;
+
+    VerticalLayout {
+        TitleBar {}
+    HorizontalLayout {
+        // ---- LEFT column ----
+        Rectangle {
+            width: 332px;
+            VerticalLayout {
+                padding: 22px;
+                padding-left: 24px;
+                padding-right: 24px;
+                spacing: 16px;
+                alignment: start;
+
+                HorizontalLayout {
+                    min-height: 26px; max-height: 26px;
+                    SectionLabel { text: "NOW"; }
+                    Rectangle { horizontal-stretch: 1; }
+                    if Backend.is_live : HorizontalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 6px;
+                        Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: Theme.live; y: parent.height/2 - 3.5px;
+                            drop-shadow-blur: 6px; drop-shadow-color: Theme.live; }
+                        Text { text: "LIVE"; font-family: Theme.mono; font-size: 11px; color: Theme.live; vertical-alignment: center; }
+                    }
+                    if !Backend.is_live : Rectangle {
+                        horizontal-stretch: 0;
+                        height: 24px; width: 70px;
+                        background: nowta.has-hover ? rgba(247,177,60,0.24) : rgba(247,177,60,0.14);
+                        border-radius: 12px; border-width: 1px; border-color: rgba(247,177,60,0.35);
+                        Path { width: 13px; height: 13px; viewbox-width: 13; viewbox-height: 13;
+                            x: 11px; y: 5.5px;
+                            commands: "M 10.5 4 A 4 4 0 1 0 11 7"; stroke: Theme.amber; stroke-width: 1.4px; fill: transparent; }
+                        Text { text: "NOW"; font-family: Theme.mono; font-size: 11px; font-weight: 600; color: Theme.amber; letter-spacing: 0.5px;
+                            x: 28px; vertical-alignment: center; height: 100%; }
+                        nowta := TouchArea { mouse-cursor: pointer; clicked => { Backend.go_live(); } }
+                    }
+                }
+                HorizontalLayout { alignment: center; SunDial {} }
+                HorizontalLayout {
+                    alignment: center; spacing: 10px;
+                    Text { text: Backend.clock; font-family: Theme.mono; font-size: 12px; color: Theme.muted; }
+                    Text { text: "·"; color: Theme.faint; }
+                    Text { text: round(Backend.cur_elev * 10) / 10 + "° elev"; font-family: Theme.mono; font-size: 12px; color: Theme.muted; }
+                    Text { text: "·"; color: Theme.faint; }
+                    Text { text: round(Backend.cur_slider) + "%"; font-family: Theme.mono; font-size: 12px; color: Theme.muted; }
+                }
+                SeasonRow {}
+                Rectangle { height: 1px; background: Theme.hairline; }
+                HorizontalLayout {
+                    spacing: 16px;
+                    Globe {}
+                    VerticalLayout {
+                        spacing: 8px;
+                        SectionLabel { text: "LOCATION"; }
+                        NumField { suffix: "°N"; text <=> Backend.lat_text;
+                            edited(t) => { Backend.lat_edited(t); } }
+                        NumField { suffix: "°E"; text <=> Backend.lon_text;
+                            edited(t) => { Backend.lon_edited(t); } }
+                    }
+                }
+            }
+            // About — ghost button anchored to the bottom-left
+            GhostButton { text: "About"; x: 14px; y: parent.height - self.height - 14px;
+                clicked => { root.show_about = true; } }
+        }
+        Rectangle { width: 1px; background: Theme.hairline; }
+
+        // ---- RIGHT column ----
+        VerticalLayout {
+            padding: 22px;
+            padding-left: 26px;
+            padding-right: 26px;
+            spacing: 18px;
+
+            VerticalLayout {
+                spacing: 10px;
+                HorizontalLayout {
+                    SectionLabel { text: "BRIGHTNESS · NITS / 24H"; }
+                    Rectangle { horizontal-stretch: 1; }
+                    Text { text: "peak " + round(Backend.peak_nits) + " nt"; font-family: Theme.mono; font-size: 11px; color: Theme.faint; }
+                }
+                HorizontalLayout { BrightnessCurve {} Rectangle { horizontal-stretch: 1; } }
+            }
+            Rectangle { height: 1px; background: Theme.hairline; }
+
+            HorizontalLayout {
+                spacing: 26px;
+                VerticalLayout {
+                    horizontal-stretch: 0;
+                    min-width: 210px;
+                    max-width: 210px;
+                    spacing: 18px;
+                    VerticalLayout {
+                        spacing: 12px;
+                        SectionLabel { text: "BRIGHTNESS"; }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Text { text: "NIGHT"; font-family: Theme.mono; width: 46px; font-size: 11px; color: Theme.muted; vertical-alignment: center; }
+                            MiniSlider { value <=> Backend.night_brightness; changed => { Backend.changed(); } }
+                            Text { text: round(Backend.night_brightness) + "%"; font-family: Theme.mono; width: 38px; font-size: 13px; color: Theme.text;
+                                horizontal-alignment: right; vertical-alignment: center; }
+                        }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Text { text: "DAY"; font-family: Theme.mono; width: 46px; font-size: 11px; color: Theme.muted; vertical-alignment: center; }
+                            MiniSlider { value <=> Backend.day_brightness; changed => { Backend.changed(); } }
+                            Text { text: round(Backend.day_brightness) + "%"; font-family: Theme.mono; width: 38px; font-size: 13px; color: Theme.text;
+                                horizontal-alignment: right; vertical-alignment: center; }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 12px;
+                        SectionLabel { text: "SYSTEM"; }
+                        VerticalLayout {
+                            spacing: 11px;
+                            Checkbox { text: "Run at startup"; checked <=> Backend.run_at_startup;
+                                toggled(v) => { Backend.changed(); } }
+                            Checkbox { text: "Show tray icon"; checked <=> Backend.show_tray_icon;
+                                toggled(v) => { Backend.changed(); } }
+                        }
+                    }
+                }
+                Rectangle { width: 1px; background: Theme.hairline; }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 8px;
+                    SectionLabel { text: "BRIGHTNESS RAMP"; }
+                    HorizontalLayout { ElevationArc {} Rectangle { horizontal-stretch: 1; } }
+                }
+            }
+            Rectangle { height: 1px; background: Theme.hairline; }
+
+            HorizontalLayout {
+                spacing: 20px;
+                Compass {}
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 8px;
+                    SectionLabel { text: "SUNLIGHT EXPOSURE DIRECTION"; }
+                    Text { text: "If you have a primary direction the sun comes from (e.g., a window), enable this.";
+                        font-size: 11px; color: Theme.faint; wrap: word-wrap; max-width: 320px; }
+                    Toggle { text: "Heading-aware compensation"; on <=> Backend.heading_aware;
+                        toggled(v) => { Backend.changed(); } }
+                    VerticalLayout {
+                        spacing: 6px;
+                        opacity: Backend.heading_aware ? 1.0 : 0.4;
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Text { text: "CONTRIBUTION"; font-family: Theme.mono; width: 86px; font-size: 11px; color: Theme.muted;
+                                vertical-alignment: center; }
+                            MiniSlider { value <=> Backend.heading_mix; enabled: Backend.heading_aware;
+                                changed => { Backend.changed(); } }
+                            Text { text: round(Backend.heading_mix) + "%"; font-family: Theme.mono; width: 38px; font-size: 13px; color: Theme.text;
+                                horizontal-alignment: right; vertical-alignment: center; }
+                        }
+                        Text { text: "Slide between ambient light or direct light contribution.";
+                            font-size: 11px; color: Theme.faint2; wrap: word-wrap; max-width: 360px; }
+                    }
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+            Rectangle { height: 1px; background: Theme.hairline; }
+            HorizontalLayout {
+                spacing: 14px;
+                Text { text: "Closing the window keeps Sundial running in the tray.";
+                    font-size: 11px; color: Theme.faint; vertical-alignment: center; horizontal-stretch: 1; }
+                QuitButton { clicked => { Backend.quit(); } }
+                AmberButton { text: "Apply"; clicked => { Backend.apply(); } }
+            }
+        }
+    }
+    }
+
+    if root.show_about : AboutDialog { close => { root.show_about = false; } }
+}

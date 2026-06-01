@@ -1,0 +1,31 @@
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { PathBox } from "widgets.slint";
+
+export component Globe inherits Rectangle {
+    width: 132px; height: 132px;
+    Rectangle { // sphere
+        width: 120px; height: 120px; x: 6px; y: 6px; border-radius: 60px;
+        background: @radial-gradient(circle, rgba(60,90,130,0.5) 0%, rgba(20,32,58,0.55) 60%, rgba(8,12,24,0.65) 100%);
+        border-width: 1px; border-color: rgba(255,255,255,0.18);
+    }
+    PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid; stroke: rgba(255,255,255,0.12); sw: 1px; }
+    PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid_hi; stroke: rgba(255,200,120,0.4); sw: 1.1px; }
+    Rectangle { // center pin
+        width: 18px; height: 18px; border-radius: 9px; x: 66px - 9px; y: 66px - 9px;
+        border-width: 1px; border-color: rgba(247,177,60,0.7);
+        Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: Theme.amber; x: 5.5px; y: 5.5px; }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        property <length> px;
+        property <length> py;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.px = self.mouse-x; self.py = self.mouse-y; } }
+        moved => {
+            if (self.pressed) {
+                Backend.nudge_location((self.mouse-y - self.py) / 1px * 0.45, -(self.mouse-x - self.px) / 1px * 0.45);
+                self.px = self.mouse-x; self.py = self.mouse-y;
+            }
+        }
+    }
+}

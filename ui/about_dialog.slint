@@ -1,0 +1,49 @@
+import { AboutSlint } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { AmberButton } from "widgets.slint";
+
+// Full-window modal overlay. Parent shows it conditionally; `close` fires on
+// backdrop click or the Close button.
+export component AboutDialog inherits Rectangle {
+    callback close();
+    background: rgba(0,0,0,0.55);
+    // click on the backdrop dismisses
+    TouchArea { clicked => { root.close(); } }
+    Rectangle {
+        width: 392px;
+        height: dlg.preferred-height;
+        background: Theme.panel;
+        border-radius: 14px;
+        border-width: 1px;
+        border-color: rgba(255,255,255,0.1);
+        drop-shadow-blur: 36px;
+        drop-shadow-color: rgba(0,0,0,0.6);
+        // absorb clicks so they don't reach the backdrop
+        TouchArea {}
+        dlg := VerticalLayout {
+            padding: 24px;
+            spacing: 12px;
+            HorizontalLayout {
+                spacing: 11px;
+                Image { source: @image-url("../assets/png/sundial-64.png"); width: 30px; height: 30px;
+                    vertical-alignment: center; }
+                VerticalLayout {
+                    alignment: center;
+                    Text { text: "HDR Sundial"; font-family: Theme.display; font-size: 18px; font-weight: 700; color: Theme.text; }
+                    Text { text: "Version " + Backend.version; font-family: Theme.mono; font-size: 11px; color: Theme.muted; }
+                }
+            }
+            Text { text: "Automatically sets the Windows SDR content brightness from the sun's position.";
+                font-size: 12px; color: Theme.muted; wrap: word-wrap; }
+            Text { text: "Copyright © 2026 evaera"; font-size: 12px; color: Theme.faint; }
+            Text { text: "Licensed under MIT OR Apache-2.0."; font-size: 12px; color: Theme.faint; }
+            Rectangle { height: 1px; background: rgba(255,255,255,0.08); }
+            HorizontalLayout { alignment: center; AboutSlint { width: 160px; } }
+            HorizontalLayout {
+                alignment: end;
+                AmberButton { text: "Close"; clicked => { root.close(); } }
+            }
+        }
+    }
+}

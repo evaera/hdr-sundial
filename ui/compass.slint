@@ -1,0 +1,35 @@
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { PathBox } from "widgets.slint";
+
+export component Compass inherits Rectangle {
+    width: 112px; height: 138px;
+    Rectangle {
+        width: 112px; height: 112px;
+        Rectangle { width: 84px; height: 84px; x: 14px; y: 14px; border-radius: 42px;
+            background: rgba(255,255,255,0.025); border-width: 1px; border-color: rgba(255,255,255,0.12); }
+        PathBox { vbw: 112px; vbh: 112px; commands: Backend.comp_minor; stroke: rgba(255,255,255,0.18); sw: 1px; }
+        PathBox { vbw: 112px; vbh: 112px; commands: Backend.comp_major; stroke: rgba(255,255,255,0.45); sw: 1px; }
+        Text { text: "N"; font-family: Theme.mono; font-size: 11px; color: Theme.amber; x: 56px - 4px; y: 28px; }
+        Text { text: "E"; font-family: Theme.mono; font-size: 11px; color: Theme.faint; x: 76px; y: 56px - 7px; }
+        Text { text: "S"; font-family: Theme.mono; font-size: 11px; color: Theme.faint; x: 56px - 4px; y: 72px; }
+        Text { text: "W"; font-family: Theme.mono; font-size: 11px; color: Theme.faint; x: 28px; y: 56px - 7px; }
+        Path { width: 100%; height: 100%; viewbox-width: 112; viewbox-height: 112;
+            commands: "M " + Backend.comp_nx1 + " " + Backend.comp_ny1 + " L " + Backend.comp_nx2 + " " + Backend.comp_ny2;
+            stroke: Theme.amber; stroke-width: 2.5px; }
+        // filled amber dot at the needle tip
+        Rectangle { width: 9px; height: 9px; border-radius: 4.5px; background: Theme.amber;
+            x: Backend.comp_nx2 * 1px - 4.5px; y: Backend.comp_ny2 * 1px - 4.5px; }
+        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: Theme.text; x: 53px; y: 53px; }
+        ta := TouchArea {
+        mouse-cursor: pointer;
+            function set() {
+                Backend.set_heading(Math.round(Math.mod(Math.atan2(self.mouse-y / 1px - 56, self.mouse-x / 1px - 56) / 1deg + 90 + 360, 360)));
+            }
+            pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.set(); } }
+            moved => { if (self.pressed) { self.set(); } }
+        }
+    }
+    Text { text: Backend.comp_heading + "° " + Backend.comp_cardinal; font-family: Theme.mono; font-size: 13px; color: Theme.text;
+        horizontal-alignment: center; x: 0; width: 112px; y: 118px; }
+}

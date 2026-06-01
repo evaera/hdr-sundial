@@ -1,0 +1,55 @@
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { PathBox } from "widgets.slint";
+
+export component SunDial inherits Rectangle {
+    width: 284px; height: 284px;
+    // outer + inner rings
+    Path { width: 100%; height: 100%; viewbox-width: 284; viewbox-height: 284;
+        commands: "M 142 8 A 134 134 0 1 1 141.9 8 Z"; fill: transparent;
+        stroke: rgba(255,255,255,0.08); stroke-width: 1px; }
+    Path { width: 100%; height: 100%; viewbox-width: 284; viewbox-height: 284;
+        commands: "M 142 53.44 A 88.56 88.56 0 1 1 141.9 53.44 Z"; fill: transparent;
+        stroke: rgba(255,255,255,0.07); stroke-width: 1px; }
+    PathBox { vbw: 284px; vbh: 284px; commands: Backend.dial_band_area; fill: rgba(247,177,60,0.13); }
+    PathBox { vbw: 284px; vbh: 284px; commands: Backend.dial_riseset; stroke: rgba(255,200,120,0.45); sw: 1px; }
+    PathBox { vbw: 284px; vbh: 284px; commands: Backend.dial_band_line; stroke: Theme.amber; sw: 2px; }
+    // hour ticks drawn on top so the day side doesn't hide them
+    PathBox { vbw: 284px; vbh: 284px; commands: Backend.dial_ticks_minor; stroke: rgba(255,255,255,0.18); sw: 1px; }
+    PathBox { vbw: 284px; vbh: 284px; commands: Backend.dial_ticks_major; stroke: rgba(255,255,255,0.55); sw: 1.5px; }
+    // hour labels at top/right/bottom/left (midnight/6/noon/18)
+    Text { text: Backend.hl0; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 142px - 15px; width: 30px; horizontal-alignment: center; y: 26px; }
+    Text { text: Backend.hl6; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 252px; width: 26px; horizontal-alignment: left; y: 142px - 6px; }
+    Text { text: Backend.hl12; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 142px - 15px; width: 30px; horizontal-alignment: center; y: 248px; }
+    Text { text: Backend.hl18; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 6px; width: 28px; horizontal-alignment: right; y: 142px - 6px; }
+    // radial line from center to the sun marker
+    Path { width: 100%; height: 100%; viewbox-width: 284; viewbox-height: 284;
+        commands: "M 142 142 L " + Backend.dial_marker_x + " " + Backend.dial_marker_y;
+        stroke: rgba(247,177,60,0.4); stroke-width: 1px; }
+    // sun marker (with amber glow)
+    Rectangle {
+        width: 14px; height: 14px; border-radius: 7px; background: Theme.amber;
+        x: Backend.dial_marker_x * 1px - 7px; y: Backend.dial_marker_y * 1px - 7px;
+        drop-shadow-blur: 12px; drop-shadow-color: Theme.amber;
+        Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: white; x: 3.5px; y: 3.5px; }
+    }
+    // center readout
+    VerticalLayout {
+        alignment: center;
+        Text { text: round(Backend.cur_nits); font-family: Theme.display; font-size: 44px; font-weight: 700; color: Theme.text; horizontal-alignment: center; }
+        Text { text: "nits"; font-family: Theme.mono; font-size: 12px; color: Theme.muted; horizontal-alignment: center; }
+        Text { text: Backend.phase; font-family: Theme.mono; font-size: 11px; color: Theme.amber; letter-spacing: 1.5px; horizontal-alignment: center; }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        function scrub() {
+            root.scrub-from(self.mouse-x / 1px - 142, self.mouse-y / 1px - 142);
+        }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.scrub(); } }
+        moved => { if (self.pressed) { self.scrub(); } }
+    }
+    callback scrub-from(float, float);
+    scrub-from(dx, dy) => {
+        Backend.scrub(Math.mod(Math.atan2(dy, dx) / 1deg + 90 + 360, 360) / 360);
+    }
+}

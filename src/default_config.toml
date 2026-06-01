@@ -4,11 +4,11 @@ longitude_deg = 0.0
 night_brightness_percent = 40.0  # slider floor when dark
 day_brightness_percent = 95.0    # slider ceiling at full daylight
 
-# Calibration: how the 0..100 slider maps to SDR white level in nits.
-# Windows is ~linear: 0 ≈ 80 nits, 100 ≈ 500 nits. To match your panel, drag
-# the Settings slider to each end and read the nits from `sundial status`.
+# Calibration of the 0..100 slider to SDR white level in nits.
+# nits_at_0 is the fixed Windows floor (80). Leave nits_at_100 = 0 to
+# auto-detect this panel's maximum on first run (it's written back here).
 calibration_nits_at_0 = 80.0
-calibration_nits_at_100 = 500.0
+calibration_nits_at_100 = 0.0
 
 elev_low_deg = -6.0    # sun elevation where the night-to-day ramp starts
 elev_high_deg = 10.0   # sun elevation where diffuse daylight is "full"
@@ -17,8 +17,10 @@ elev_high_deg = 10.0   # sun elevation where diffuse daylight is "full"
 # Off by default (tracks sun elevation only); set true and your heading to use it.
 heading_aware = false
 heading_deg = 180.0        # 0=N, 90=E, 180=S, 270=W
-ambient_fraction = 0.55    # share of range from skylight alone, before direct sun
+ambient_fraction = 0.55    # ambient↔direct mix; CONTRIBUTION slider = (1 - this)
 direct_ramp_deg = 5.0      # sun must clear this many deg for full direct-sun term
 
 tick_seconds = 2.0             # how often to check the target and slider value
 update_threshold_percent = 0.5 # only correct the slider once it drifts this far
+
+show_tray_icon = true          # tray icon: left-click opens settings, right-click menu

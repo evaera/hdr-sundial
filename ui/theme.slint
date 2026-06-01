@@ -1,0 +1,28 @@
+// Shared color palette for the instrument UI. Solid brand colors live here as
+// tokens; translucent overlay fills (rgba) stay inline at their use sites.
+export global Theme {
+    out property <color> amber: #f7b13c;
+    out property <color> amber-bright: #ffc657;
+    out property <color> amber-press: #d89a2e;
+    out property <color> sun: #ffd479;
+
+    out property <color> text: #f3ece0;
+    out property <color> muted: #b0a591;
+    out property <color> faint: #7b7062;
+    out property <color> faint2: #6f6556;
+
+    out property <color> bg: #15110b;
+    out property <color> panel: #1c1710;
+    out property <color> ink: #1a1206; // dark text on amber
+
+    out property <color> live: #6fd39a;
+    out property <color> danger: #e8896f;
+
+    out property <color> hairline: rgba(255, 255, 255, 0.085);
+
+    // Type roles. mono = numeric & tracked labels, display = big readouts +
+    // title, sans = body text (the window's default-font-family).
+    out property <string> mono: "JetBrains Mono";
+    out property <string> display: "Space Grotesk";
+    out property <string> sans: "Hanken Grotesk";
+}

@@ -1,0 +1,42 @@
+import { Theme } from "theme.slint";
+import { Backend } from "backend.slint";
+import { PathBox } from "widgets.slint";
+
+export component BrightnessCurve inherits Rectangle {
+    min-width: 540px; max-width: 540px; min-height: 150px; max-height: 150px;
+    horizontal-stretch: 0;
+    PathBox { vbw: 540px; vbh: 150px; commands: Backend.curve_night_l; fill: rgba(10,16,40,0.35); }
+    PathBox { vbw: 540px; vbh: 150px; commands: Backend.curve_night_r; fill: rgba(10,16,40,0.35); }
+    PathBox { vbw: 540px; vbh: 150px; commands: Backend.curve_grid; stroke: rgba(255,255,255,0.06); sw: 1px; }
+    Path { width: 100%; height: 100%; viewbox-width: 540; viewbox-height: 150;
+        commands: Backend.curve_area;
+        fill: @linear-gradient(180deg, rgba(247,177,60,0.42) 0%, rgba(247,177,60,0.02) 100%); }
+    PathBox { vbw: 540px; vbh: 150px; commands: Backend.curve_riseset; stroke: rgba(255,200,120,0.4); sw: 1px; }
+    PathBox { vbw: 540px; vbh: 150px; commands: Backend.curve_line; stroke: Theme.amber; sw: 2.25px; }
+    // now indicator
+    Rectangle { width: 1px; height: 114px; y: 14px; background: rgba(255,255,255,0.5); x: Backend.curve_now_x * 1px; }
+    Rectangle { width: 9px; height: 9px; border-radius: 4.5px; background: white;
+        x: Backend.curve_now_x * 1px - 4.5px; y: Backend.curve_now_y * 1px - 4.5px;
+        border-width: 2px; border-color: Theme.amber; }
+    // rise/set labels, centered on the dashed lines
+    Text { text: Backend.curve_rise_label; font-family: Theme.mono; font-size: 10px; color: rgba(255,200,120,0.9);
+        x: Backend.curve_rise_x * 1px - 20px; width: 40px; horizontal-alignment: center; y: 1px; }
+    Text { text: "RISE"; font-family: Theme.mono; font-size: 8px; color: Theme.faint; letter-spacing: 0.5px;
+        x: Backend.curve_rise_x * 1px - 20px; width: 40px; horizontal-alignment: center; y: 14px; }
+    Text { text: Backend.curve_set_label; font-family: Theme.mono; font-size: 10px; color: rgba(255,200,120,0.9);
+        x: Backend.curve_set_x * 1px - 20px; width: 40px; horizontal-alignment: center; y: 1px; }
+    Text { text: "SET"; font-family: Theme.mono; font-size: 8px; color: Theme.faint; letter-spacing: 0.5px;
+        x: Backend.curve_set_x * 1px - 20px; width: 40px; horizontal-alignment: center; y: 14px; }
+    // axis labels (centered on the 0/6/12/18/24 ticks)
+    Text { text: Backend.hl0; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 8px - 15px; width: 30px; horizontal-alignment: center; y: 134px; }
+    Text { text: Backend.hl6; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 139px - 15px; width: 30px; horizontal-alignment: center; y: 134px; }
+    Text { text: Backend.hl12; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 268px - 15px; width: 30px; horizontal-alignment: center; y: 134px; }
+    Text { text: Backend.hl18; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 397px - 15px; width: 30px; horizontal-alignment: center; y: 134px; }
+    Text { text: Backend.hl24; font-family: Theme.mono; font-size: 10px; color: Theme.faint; x: 520px - 15px; width: 30px; horizontal-alignment: center; y: 134px; }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        function scrub() { Backend.scrub(clamp((self.mouse-x / 1px - 8) / 524, 0, 1)); }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.scrub(); } }
+        moved => { if (self.pressed) { self.scrub(); } }
+    }
+}

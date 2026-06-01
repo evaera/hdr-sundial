@@ -1,0 +1,119 @@
+// Rust owns this global: UI edits invoke callbacks, derived geometry is pushed
+// in. Re-exported from app.slint so the Rust side can reach it.
+export global Backend {
+    // inputs (two-way; UI edits directly)
+    in-out property <float> lat: 37.7867;
+    in-out property <float> lon: -122.3931;
+    // Field text is Rust-owned so a paste that splits "lat, lon" can rewrite
+    // both boxes (a computed binding would detach on edit and go stale).
+    in-out property <string> lat_text;
+    in-out property <string> lon_text;
+    in-out property <float> night_brightness: 30;
+    in-out property <float> day_brightness: 100;
+    in-out property <bool> heading_aware: true;
+    in-out property <float> heading_mix: 60; // CONTRIBUTION slider, 0..100
+    in-out property <bool> run_at_startup: true;
+    in-out property <bool> show_tray_icon: true;
+    in property <string> version: "0.0.0";
+
+    // live / derived (Rust writes)
+    in property <bool> is_live: true;
+    in property <float> cur_nits: 480;
+    in property <float> cur_slider: 100;
+    in property <float> cur_elev: 39;
+    in property <string> phase: "Daylight";
+    in property <string> clock: "—";
+    in property <float> peak_nits: 480;
+
+    // season scrubber
+    in-out property <int> season_doy;     // effective day-of-year (0..364)
+    in property <int> today_doy;          // today's day-of-year (for the dot)
+    in property <string> season_date;     // localized "May 31"
+
+    // window controls (custom title bar)
+    in property <bool> win_maximized: false;
+
+    // sun-dial geometry
+    in property <string> dial_band_area;
+    in property <string> dial_band_line;
+    in property <string> dial_ticks_major;
+    in property <string> dial_ticks_minor;
+    in property <string> dial_riseset;
+    in property <float> dial_marker_x;
+    in property <float> dial_marker_y;
+
+    // curve geometry
+    in property <string> curve_area;
+    in property <string> curve_line;
+    in property <string> curve_grid;
+    in property <string> curve_riseset;
+    in property <string> curve_night_l;
+    in property <string> curve_night_r;
+    in property <float> curve_now_x;
+    in property <float> curve_now_y;
+    in property <float> curve_rise_x;
+    in property <float> curve_set_x;
+    in property <string> curve_rise_label;
+    in property <string> curve_set_label;
+    in property <string> hl0;
+    in property <string> hl6;
+    in property <string> hl12;
+    in property <string> hl18;
+    in property <string> hl24;
+
+    // globe geometry
+    in property <string> globe_grid;
+    in property <string> globe_grid_hi;
+
+    // elevation arc (side-on protractor; design space 276 x 176)
+    in property <string> arc_base;
+    in property <string> arc_night;
+    in property <string> arc_ramp;
+    in property <string> arc_day;
+    in property <string> arc_edge;
+    in property <string> arc_notch_minor;
+    in property <string> arc_notch_major;
+    in property <string> arc_horizon;
+    in property <float> arc_sun_x;
+    in property <float> arc_sun_y;
+    in property <float> arc_rs_x;
+    in property <float> arc_rs_y;
+    in property <float> arc_rs_ix;
+    in property <float> arc_rs_iy;
+    in property <float> arc_fd_x;
+    in property <float> arc_fd_y;
+    in property <float> arc_fd_ix;
+    in property <float> arc_fd_iy;
+    in property <string> arc_rs_pill;
+    in property <string> arc_fd_pill;
+
+    // compass
+    in property <string> comp_major;
+    in property <string> comp_minor;
+    in property <float> comp_nx1;
+    in property <float> comp_ny1;
+    in property <float> comp_nx2;
+    in property <float> comp_ny2;
+    in property <float> comp_heading: 135;
+    in property <string> comp_cardinal: "SE";
+
+    // interactions
+    callback scrub(float);          // fraction 0..1 of the day
+    callback go_live();
+    callback nudge_location(float, float);
+    callback set_ramp(float);       // angle-derived value
+    callback set_daylight(float);
+    callback set_heading(float);
+    callback set_season(int);       // override day-of-year
+    callback changed();             // a bound value changed; recompute
+    callback lat_edited(string);    // may contain "lat, lon"
+    callback lon_edited(string);
+    callback apply();
+    callback quit();
+
+    // window controls
+    callback win_minimize();
+    callback win_maximize();
+    callback win_close();
+    callback win_drag_move(float, float); // logical-px delta from the grab point
+}
