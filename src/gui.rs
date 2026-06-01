@@ -136,6 +136,7 @@ fn recompute(ui: &AppWindow, st: &AppState) {
     b.set_globe_land(c.globe_land.into());
     b.set_globe_grid(c.globe_grid.into());
     b.set_globe_grid_hi(c.globe_grid_hi.into());
+    b.set_globe_night(c.globe_night.into());
 
     let ag = sundial_math::arc(st.cfg.elev_low_deg, st.cfg.elev_high_deg, c.cur_elev as f64);
     b.set_arc_base(ag.base.into());

@@ -12,6 +12,13 @@ export component Globe inherits Rectangle {
     PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_land; stroke: rgba(126,186,148,0.7); sw: 1.1px; }
     PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid; stroke: rgba(255,255,255,0.1); sw: 1px; }
     PathBox { vbw: 132px; vbh: 132px; commands: Backend.globe_grid_hi; stroke: rgba(255,200,120,0.4); sw: 1.1px; }
+    Rectangle { // night-side shading, clipped to the sphere
+        x: 6px; y: 6px; width: 120px; height: 120px; border-radius: 60px; clip: true;
+        PathBox {
+            x: -6px; y: -6px; width: 132px; height: 132px;
+            vbw: 132px; vbh: 132px; commands: Backend.globe_night; fill: rgba(3,7,20,0.6);
+        }
+    }
     Rectangle { // center pin
         width: 18px; height: 18px; border-radius: 9px; x: 66px - 9px; y: 66px - 9px;
         border-width: 1px; border-color: rgba(247,177,60,0.7);

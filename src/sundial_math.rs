@@ -270,6 +270,7 @@ pub struct Computed {
     pub globe_land: String,
     pub globe_grid: String,
     pub globe_grid_hi: String,
+    pub globe_night: String,
 }
 
 fn line(seg: &mut String, x1: f64, y1: f64, x2: f64, y2: f64) {
@@ -550,6 +551,111 @@ pub fn compute(m: &Model, cur_t: f64) -> Computed {
         }
     }
     c.globe_land = land;
+
+    // Night overlay: shade where the sun is below the horizon. The night side is
+    // the hemisphere centered on the antisolar point; on the globe we draw the
+    // part of the *visible* face that falls in it — bounded by the visible arc of
+    // the terminator (the day/night great circle ⟂ the sun) and the night portion
+    // of the limb. Vectors are unit (x→(0,0), z→north pole); `dot(P, sun)` is the
+    // sine of the sun's elevation at P, so `< 0` means night.
+    fn v_dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+    fn v_cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+        [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    }
+    fn v_norm(a: [f64; 3]) -> [f64; 3] {
+        let m = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt().max(1e-12);
+        [a[0] / m, a[1] / m, a[2] / m]
+    }
+    /// The single contiguous run of `true` in a circular flag array, in order.
+    fn circ_run(flags: &[bool]) -> Vec<usize> {
+        let n = flags.len();
+        let count = flags.iter().filter(|b| **b).count();
+        if count == 0 {
+            return Vec::new();
+        }
+        if count == n {
+            return (0..n).collect();
+        }
+        let start = (0..n).find(|&i| flags[i] && !flags[(i + n - 1) % n]).unwrap_or(0);
+        let mut out = Vec::with_capacity(count);
+        let mut i = start;
+        while flags[i] {
+            out.push(i);
+            i = (i + 1) % n;
+        }
+        out
+    }
+
+    // Sun direction and the orthographic basis at the view center.
+    let dec_r = dec * D2R;
+    let lam_s = (m.lon + 15.0 * (12.0 - cur_t)) * D2R; // subsolar longitude
+    let sun = [dec_r.cos() * lam_s.cos(), dec_r.cos() * lam_s.sin(), dec_r.sin()];
+    let ctr = [lat0.cos() * lon0.cos(), lat0.cos() * lon0.sin(), lat0.sin()];
+    let east = [-lon0.sin(), lon0.cos(), 0.0];
+    let north = [-lat0.sin() * lon0.cos(), -lat0.sin() * lon0.sin(), lat0.cos()];
+    let projp = |p: [f64; 3]| (gcx + v_dot(p, east) * gr, gcy - v_dot(p, north) * gr);
+
+    // Sample the terminator (⟂ sun) and the limb (⟂ center) as great circles.
+    let k = [0.0, 0.0, 1.0];
+    let basis = |axis: [f64; 3]| {
+        let u = v_norm([
+            k[0] - axis[0] * v_dot(k, axis),
+            k[1] - axis[1] * v_dot(k, axis),
+            k[2] - axis[2] * v_dot(k, axis),
+        ]);
+        (u, v_cross(axis, u))
+    };
+    let circle = |axis: [f64; 3]| -> Vec<[f64; 3]> {
+        let (u, v) = basis(axis);
+        (0..180)
+            .map(|i| {
+                let a = (i as f64 / 180.0) * std::f64::consts::TAU;
+                [
+                    a.cos() * u[0] + a.sin() * v[0],
+                    a.cos() * u[1] + a.sin() * v[1],
+                    a.cos() * u[2] + a.sin() * v[2],
+                ]
+            })
+            .collect()
+    };
+    let term = circle(sun);
+    let limb = circle(ctr);
+    let term_front: Vec<bool> = term.iter().map(|&p| v_dot(p, ctr) > 0.0).collect();
+    let limb_night: Vec<bool> = limb.iter().map(|&p| v_dot(p, sun) < 0.0).collect();
+    let tf = circ_run(&term_front);
+    let ln = circ_run(&limb_night);
+
+    let mut night = String::new();
+    if tf.is_empty() || ln.is_empty() {
+        // No terminator on the visible face → it's uniformly day or night.
+        if v_dot(ctr, sun) < 0.0 {
+            let (lx, rx) = (gcx - gr, gcx + gr);
+            night = format!(
+                "M {lx:.1} {gcy:.1} A {gr:.1} {gr:.1} 0 1 0 {rx:.1} {gcy:.1} \
+                 A {gr:.1} {gr:.1} 0 1 0 {lx:.1} {gcy:.1} Z"
+            );
+        }
+    } else {
+        let mut pts: Vec<(f64, f64)> = tf.iter().map(|&i| projp(term[i])).collect();
+        let mut limb_pts: Vec<(f64, f64)> = ln.iter().map(|&i| projp(limb[i])).collect();
+        // The arcs share their two crossing points; append the limb arc onto the
+        // terminator's end in whichever direction meets it.
+        let end = *pts.last().unwrap();
+        let to_first = (end.0 - limb_pts[0].0).hypot(end.1 - limb_pts[0].1);
+        let last = *limb_pts.last().unwrap();
+        if (end.0 - last.0).hypot(end.1 - last.1) < to_first {
+            limb_pts.reverse();
+        }
+        pts.extend(limb_pts);
+        night.push_str(&format!("M {:.1} {:.1} ", pts[0].0, pts[0].1));
+        for p in &pts[1..] {
+            night.push_str(&format!("L {:.1} {:.1} ", p.0, p.1));
+        }
+        night.push('Z');
+    }
+    c.globe_night = night;
 
     c
 }
