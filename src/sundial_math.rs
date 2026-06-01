@@ -314,14 +314,10 @@ pub fn compute(m: &Model, cur_t: f64) -> Computed {
     let mut area = format!("M {cx:.2} {cy:.2} ");
     let mut bline = String::new();
     for (i, smp) in s.iter().enumerate() {
-        let r = r_in + (smp.slid
-            er / 100.0) * (r_out
-            - r_in);
-        
+        let r = r_in + (smp.slider / 100.0) * (r_out - r_in);
         let a = a_deg(smp.t);
         let x = cx + a.cos() * r;
-        let y = cy + a.sin() * r
-            ;
+        let y = cy + a.sin() * r;
 
 
         area.push_str(&format!("L {x:.2} {y:.2} "));
@@ -396,8 +392,7 @@ pub fn compute(m: &Model, cur_t: f64) -> Computed {
 
     let mut line_p = String::new();
     let mut area_p = format!("M {:.2} {:.2} ", xt(0.0), yv(m.cal0));
-    for (i, smp) in s.iter().enum
-            erate() {
+    for (i, smp) in s.iter().enumerate() {
 
 
         let (x, y) = (xt(smp.t), yv(smp.nits));
@@ -561,10 +556,7 @@ pub fn compass(value: f64) -> CompassGeom {
     g
 }
 
-// ---- ElevationArc (side-o
-            n protractor; size 
-           276 x 176) ----
-        
+// ---- ElevationArc (side-on protractor; size 276 x 176) ----
 const AMIN: f64 = -20.0;
 const AMAX: f64 = 34.0;
 const AOX: f64 = 26.0;
@@ -585,8 +577,7 @@ fn arc_pi(a: f64) -> (f64, f64) {
 }
 /// Filled annular band between two elevations.
 fn arc_band(a1: f64, a2: f64) -> String {
-    let (lo, hi) = (a1.min(a
-            2), a1.max(a2));
+    let (lo, hi) = (a1.min(a2), a1.max(a2));
 
 
     let mut d = String::new();
