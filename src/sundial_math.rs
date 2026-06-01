@@ -100,23 +100,7 @@ fn daylight01(elev: f64, az: f64, m: &Model) -> f64 {
 }
 
 /// (sunrise, sunset) as local solar hours, or None for polar day/night.
-fn rise_se
-        t(
-        la
-        t_
-        deg: f64, dec: f64) -> (Option<f64>, Option<f64>) {
-        0.0,
-        1.0,
-    
-        0.0,
-        1.0,
-
-        0.0,
-        1.0,
-
-        0.0,
-        1.0,
-
+fn rise_set(lat_deg: f64, dec: f64) -> (Option<f64>, Option<f64>) {
     let lat = lat_deg * D2R;
     let d = dec * D2R;
     let cos_h = -lat.tan() * d.tan();
